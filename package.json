@@ -1,0 +1,36 @@
+{
+  "name": "content-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Content creator platform: mobile app, API and shared code",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "postinstall": "npm run build -w @content-platform/shared",
+    "dev:api": "npm run dev -w @content-platform/api",
+    "dev:mobile": "npm run start -w @content-platform/mobile",
+    "dev:shared": "npm run dev -w @content-platform/shared",
+    "build": "npm run build -w @content-platform/shared && npm run build -w @content-platform/api",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:generate": "npm run db:generate -w @content-platform/api",
+    "db:migrate": "npm run db:migrate -w @content-platform/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "prettier": "^3.9.10",
+    "typescript-eslint": "^8.72.2"
+  }
+}

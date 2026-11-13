@@ -1,0 +1,5 @@
+# Optional: ask the right people to review changes in their area.
+# Replace the GitHub usernames and remove the leading "#" to enable a rule.
+# /apps/api/src/modules/payments/     @username
+# /apps/api/src/modules/usage/        @username
+# /apps/mobile/                       @username
