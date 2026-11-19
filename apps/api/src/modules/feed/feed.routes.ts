@@ -1,10 +1,12 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { optionalAuth } from '../../middleware/auth';
 import { quotaGuard } from '../../middleware/quota-guard';
+import { validate } from '../../middleware/validate';
+import { feedHandler } from './feed.controller';
+import { feedQuerySchema } from './feed.schemas';
 
 export const feedRoutes: Router = Router();
 
-// Visitors can read the feed too: the quota guard decides how long.
-feedRoutes.get('/', optionalAuth, quotaGuard, todo('FR13 feed'));
+// Visitors can browse the feed too — quota guard decides how long (FR17).
+feedRoutes.get('/', optionalAuth, quotaGuard, validate({ query: feedQuerySchema }), feedHandler); // FR13

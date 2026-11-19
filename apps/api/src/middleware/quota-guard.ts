@@ -1,18 +1,43 @@
 import type { RequestHandler } from 'express';
 
-/**
- * Blocks feed requests once the free daily viewing time is used up (spec FR17).
- *
- * TODO (build step 3, usage module): implement with this logic
- *  1. If req.user has an active subscription, call next() (FR21).
- *  2. Otherwise compute the seconds used today:
- *       - visitors: daily_usage row of req.deviceId
- *       - members: the larger of the user row and the device row (BR3)
- *  3. If used >= env.DAILY_FREE_SECONDS, respond with quotaExhausted({ resetsAt }) (HTTP 402).
- *  4. Otherwise call next().
- * Always use server time, never the phone's clock.
- */
+import { quotaExhausted } from '../lib/errors';
+import { computeQuotaStatus } from '../modules/usage/usage.service';
 
-export const quotaGuard: RequestHandler = (_req, _res, next) => {
+/**
+ * FR17 / FR21 — Gate feed requests by daily quota.
+ *
+ * Order of checks (cheapest first):
+ *  1. If the user has an active subscription → pass through (FR21).
+ *  2. Compute seconds used today for this device / user.
+ *  3. If quota is exhausted → 402 QUOTA_EXHAUSTED with resetsAt (FR19).
+ *  4. Otherwise → attach quota status to res.locals and call next().
+ *
+ * SWE applied:
+ *  - Single Responsibility: only decides whether to let the request through.
+ *    The actual quota computation is in usage.service.ts (DRY — same function
+ *    used by GET /usage/today and heartbeat).
+ *  - Fail Fast: subscription check short-circuits before any usage query.
+ *  - FR17: server time only — now is created here, never taken from the client.
+ */
+export const quotaGuard: RequestHandler = async (req, res, next) => {
+  const now = new Date();
+
+  const status = await computeQuotaStatus({
+    deviceId: req.deviceId,
+    userId: req.user?.id,
+    now,
+  });
+
+  if (status.unlimited) {
+    res.locals.quota = status;
+    return next();
+  }
+
+  if (status.remainingSeconds === 0) {
+    return next(quotaExhausted({ resetsAt: status.resetsAt }));
+  }
+
+  // Attach quota to locals so the feed controller can include it in the response.
+  res.locals.quota = status;
   next();
 };

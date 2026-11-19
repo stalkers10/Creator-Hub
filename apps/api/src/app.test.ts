@@ -19,7 +19,8 @@ describe('API base', () => {
   });
 
   it('answers 501 for endpoints that are not built yet', async () => {
-    const res = await request(app).get('/feed');
+    // /plans is in the subscriptions module, still a todo stub.
+    const res = await request(app).get('/plans');
     expect(res.status).toBe(501);
     expect(res.body.error.code).toBe('NOT_IMPLEMENTED');
   });
