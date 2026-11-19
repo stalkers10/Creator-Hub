@@ -76,7 +76,9 @@ describe('POST /creators/:id/follow (FR11)', () => {
         from: () => ({ where: () => ({ limit: () => Promise.resolve([{ id: VALID_UUID }]) }) }),
       })
       .mockReturnValueOnce({
-        from: () => ({ where: () => ({ limit: () => Promise.resolve([{ followerId: 'user-1' }]) }) }),
+        from: () => ({
+          where: () => ({ limit: () => Promise.resolve([{ followerId: 'user-1' }]) }),
+        }),
       });
 
     (db.delete as ReturnType<typeof vi.fn>).mockReturnValue({

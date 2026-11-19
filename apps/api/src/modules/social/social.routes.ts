@@ -19,7 +19,27 @@ socialRoutes.post(
 ); // FR11
 
 // FR35–FR40 — implemented in a later build step.
-socialRoutes.post('/posts/:id/like', requireAuth, validate({ params: postIdParamsSchema }), todo('FR35 like or unlike'));
-socialRoutes.post('/posts/:id/comments', requireAuth, validate({ params: postIdParamsSchema }), todo('FR36 comment'));
-socialRoutes.post('/posts/:id/save', requireAuth, validate({ params: postIdParamsSchema }), todo('FR37 save to favourites'));
-socialRoutes.post('/posts/:id/report', requireAuth, validate({ params: postIdParamsSchema }), todo('FR40 report a post'));
+socialRoutes.post(
+  '/posts/:id/like',
+  requireAuth,
+  validate({ params: postIdParamsSchema }),
+  todo('FR35 like or unlike'),
+);
+socialRoutes.post(
+  '/posts/:id/comments',
+  requireAuth,
+  validate({ params: postIdParamsSchema }),
+  todo('FR36 comment'),
+);
+socialRoutes.post(
+  '/posts/:id/save',
+  requireAuth,
+  validate({ params: postIdParamsSchema }),
+  todo('FR37 save to favourites'),
+);
+socialRoutes.post(
+  '/posts/:id/report',
+  requireAuth,
+  validate({ params: postIdParamsSchema }),
+  todo('FR40 report a post'),
+);

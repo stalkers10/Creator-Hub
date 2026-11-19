@@ -48,7 +48,11 @@ export interface PostWithMedia {
 export async function createPost(userId: string, input: CreatePostInput): Promise<PostWithMedia> {
   // Verify the user has an active creator profile (BR6 prerequisite).
   const [creator] = await db
-    .select({ id: creatorProfiles.id, displayName: creatorProfiles.displayName, profilePicture: creatorProfiles.profilePicture })
+    .select({
+      id: creatorProfiles.id,
+      displayName: creatorProfiles.displayName,
+      profilePicture: creatorProfiles.profilePicture,
+    })
     .from(creatorProfiles)
     .where(eq(creatorProfiles.userId, userId))
     .limit(1);
@@ -68,23 +72,22 @@ export async function createPost(userId: string, input: CreatePostInput): Promis
 
     if (!created) throw new Error('Post insert returned no row');
 
-    const assets =
-      input.mediaAssets?.length
-        ? await tx
-            .insert(mediaAssets)
-            .values(
-              input.mediaAssets.map((a) => ({
-                postId: created.id,
-                cloudinaryPublicId: a.cloudinaryPublicId,
-                url: a.url,
-                mediaType: a.mediaType,
-                duration: a.duration ?? null,
-                width: a.width ?? null,
-                height: a.height ?? null,
-              })),
-            )
-            .returning()
-        : [];
+    const assets = input.mediaAssets?.length
+      ? await tx
+          .insert(mediaAssets)
+          .values(
+            input.mediaAssets.map((a) => ({
+              postId: created.id,
+              cloudinaryPublicId: a.cloudinaryPublicId,
+              url: a.url,
+              mediaType: a.mediaType,
+              duration: a.duration ?? null,
+              width: a.width ?? null,
+              height: a.height ?? null,
+            })),
+          )
+          .returning()
+      : [];
 
     return { post: created, assets };
   });
@@ -111,12 +114,11 @@ export async function getPostById(postId: string): Promise<PostWithMedia> {
   db.update(posts)
     .set({ viewCount: sql`${posts.viewCount} + 1` })
     .where(eq(posts.id, postId))
-    .catch(() => {/* ignore */});
+    .catch(() => {
+      /* ignore */
+    });
 
-  const assets = await db
-    .select()
-    .from(mediaAssets)
-    .where(eq(mediaAssets.postId, postId));
+  const assets = await db.select().from(mediaAssets).where(eq(mediaAssets.postId, postId));
 
   return toPostWithMedia(row.post, assets, row.creator);
 }

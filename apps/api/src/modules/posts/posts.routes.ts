@@ -7,19 +7,9 @@ import { createPostSchema, postIdParamsSchema, updatePostSchema } from './posts.
 
 export const postsRoutes: Router = Router();
 
-postsRoutes.post(
-  '/',
-  requireAuth,
-  validate({ body: createPostSchema }),
-  publishPost,
-); // FR8
+postsRoutes.post('/', requireAuth, validate({ body: createPostSchema }), publishPost); // FR8
 
-postsRoutes.get(
-  '/:id',
-  optionalAuth,
-  validate({ params: postIdParamsSchema }),
-  getPost,
-);
+postsRoutes.get('/:id', optionalAuth, validate({ params: postIdParamsSchema }), getPost);
 
 postsRoutes.patch(
   '/:id',
@@ -28,9 +18,4 @@ postsRoutes.patch(
   editPost,
 ); // FR9
 
-postsRoutes.delete(
-  '/:id',
-  requireAuth,
-  validate({ params: postIdParamsSchema }),
-  removePost,
-); // FR9
+postsRoutes.delete('/:id', requireAuth, validate({ params: postIdParamsSchema }), removePost); // FR9

@@ -39,7 +39,12 @@ const token = signToken({ id: 'user-1', isAdmin: false });
 // Valid UUIDs — the params schema rejects non-UUIDs before the service runs.
 const POST_UUID = '550e8400-e29b-41d4-a716-446655440001';
 
-const baseCreator = { id: 'creator-1', displayName: 'Alice', profilePicture: null, userId: 'user-1' };
+const baseCreator = {
+  id: 'creator-1',
+  displayName: 'Alice',
+  profilePicture: null,
+  userId: 'user-1',
+};
 const basePost = {
   id: POST_UUID,
   type: 'text',
@@ -127,7 +132,7 @@ describe('POST /posts (FR8)', () => {
 describe('PATCH /posts/:id (FR9)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('P7 — rejects editing another user\'s post', async () => {
+  it("P7 — rejects editing another user's post", async () => {
     const { db } = await import('../../db');
 
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -188,15 +193,14 @@ describe('PATCH /posts/:id (FR9)', () => {
 describe('DELETE /posts/:id (FR9)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('P10 — rejects deleting another user\'s post', async () => {
+  it("P10 — rejects deleting another user's post", async () => {
     const { db } = await import('../../db');
 
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
       from: () => ({
         innerJoin: () => ({
           where: () => ({
-            limit: () =>
-              Promise.resolve([{ creator: { ...baseCreator, userId: 'other-user' } }]),
+            limit: () => Promise.resolve([{ creator: { ...baseCreator, userId: 'other-user' } }]),
           }),
         }),
       }),
@@ -216,8 +220,7 @@ describe('DELETE /posts/:id (FR9)', () => {
       from: () => ({
         innerJoin: () => ({
           where: () => ({
-            limit: () =>
-              Promise.resolve([{ creator: { ...baseCreator, userId: 'user-1' } }]),
+            limit: () => Promise.resolve([{ creator: { ...baseCreator, userId: 'user-1' } }]),
           }),
         }),
       }),
