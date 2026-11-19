@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, or, sql } from 'drizzle-orm';
 
 import { env } from '../../config/env';
 import { db } from '../../db';
@@ -118,7 +118,8 @@ export async function computeQuotaStatus(params: {
 }): Promise<QuotaStatus> {
   const { deviceId, userId, now } = params;
 
-  // BR1 / FR21: check for an active subscription first.
+  // BR1 / FR21: check for an active (or cancelled-but-not-yet-expired) subscription.
+  // FR28: a cancelled subscription retains access until its endDate.
   if (userId) {
     const [activeSub] = await db
       .select({ id: subscriptions.id })
@@ -126,7 +127,7 @@ export async function computeQuotaStatus(params: {
       .where(
         and(
           eq(subscriptions.userId, userId),
-          eq(subscriptions.status, 'active'),
+          or(eq(subscriptions.status, 'active'), eq(subscriptions.status, 'cancelled')),
           gt(subscriptions.endDate, now),
         ),
       )

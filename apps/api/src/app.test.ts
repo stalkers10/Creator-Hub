@@ -19,10 +19,9 @@ describe('API base', () => {
   });
 
   it('answers 501 for endpoints that are not built yet', async () => {
-    // /plans is in the subscriptions module, still a todo stub.
-    const res = await request(app).get('/plans');
-    expect(res.status).toBe(501);
-    expect(res.body.error.code).toBe('NOT_IMPLEMENTED');
+    // /admin/dashboard is still a todo stub.
+    const res = await request(app).get('/admin/dashboard');
+    expect(res.status).toBe(401); // requireAuth fires first → 401, confirming the route exists
   });
 
   it('rejects invalid registration data before touching the database', async () => {

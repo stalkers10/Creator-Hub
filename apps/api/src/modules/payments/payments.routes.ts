@@ -1,11 +1,28 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { requireAuth } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
+import {
+  campayWebhookHandler,
+  initiatePaymentHandler,
+  myPaymentsHandler,
+} from './payments.controller';
+import { campayWebhookSchema, initiatePaymentSchema } from './payments.schemas';
 
 export const paymentsRoutes: Router = Router();
 
-paymentsRoutes.post('/', requireAuth, todo('FR30 start a Campay mobile money collection'));
-// No user token here: the call comes from Campay. Never trust the body, verify it with Campay (FR31).
-paymentsRoutes.post('/webhook/campay', todo('FR31 FR34 Campay webhook'));
-paymentsRoutes.get('/me', requireAuth, todo('FR33 payment history'));
+paymentsRoutes.post(
+  '/',
+  requireAuth,
+  validate({ body: initiatePaymentSchema }),
+  initiatePaymentHandler,
+); // FR30
+
+// No requireAuth: call comes from Campay, not from an authenticated user (FR31).
+paymentsRoutes.post(
+  '/webhook/campay',
+  validate({ body: campayWebhookSchema }),
+  campayWebhookHandler,
+); // FR31 / FR34
+
+paymentsRoutes.get('/me', requireAuth, myPaymentsHandler); // FR33
