@@ -25,6 +25,24 @@ export const creatorProfiles = pgTable('creator_profiles', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * FR4 — Password reset tokens.
+ * The raw token is never stored; only its SHA-256 hex digest is kept.
+ * Tokens expire after one hour and are invalidated after first use.
+ */
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  /** SHA-256 hex digest of the raw token. */
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type CreatorProfile = typeof creatorProfiles.$inferSelect;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;

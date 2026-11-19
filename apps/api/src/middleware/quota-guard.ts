@@ -12,6 +12,8 @@ import type { RequestHandler } from 'express';
  *  4. Otherwise call next().
  * Always use server time, never the phone's clock.
  */
+
 export const quotaGuard: RequestHandler = (_req, _res, next) => {
   next();
 };
+ 

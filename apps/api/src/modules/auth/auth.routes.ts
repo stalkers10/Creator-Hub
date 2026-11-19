@@ -1,14 +1,26 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { validate } from '../../middleware/validate';
 import * as controller from './auth.controller';
-import { loginSchema, registerSchema } from './auth.schemas';
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+} from './auth.schemas';
 
 export const authRoutes: Router = Router();
 
 authRoutes.post('/register', validate({ body: registerSchema }), controller.register);
 authRoutes.post('/login', validate({ body: loginSchema }), controller.login);
 authRoutes.post('/logout', controller.logout);
-authRoutes.post('/forgot-password', todo('FR4 request password reset'));
-authRoutes.post('/reset-password', todo('FR4 reset password with token'));
+authRoutes.post(
+  '/forgot-password',
+  validate({ body: forgotPasswordSchema }),
+  controller.forgotPassword,
+); // FR4
+authRoutes.post(
+  '/reset-password',
+  validate({ body: resetPasswordSchema }),
+  controller.resetPassword,
+); // FR4

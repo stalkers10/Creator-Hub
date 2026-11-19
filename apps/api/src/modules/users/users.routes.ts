@@ -1,13 +1,14 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { requireAuth } from '../../middleware/auth';
-import { getMe } from './users.controller';
+import { validate } from '../../middleware/validate';
+import { getMe, toggleCreatorMode, updateMe } from './users.controller';
+import { creatorModeSchema, updateProfileSchema } from './users.schemas';
 
 export const usersRoutes: Router = Router();
 
 usersRoutes.use(requireAuth);
 
 usersRoutes.get('/me', getMe);
-usersRoutes.put('/me', todo('FR3 update profile'));
-usersRoutes.patch('/me/creator-mode', todo('FR5 switch creator mode on or off'));
+usersRoutes.put('/me', validate({ body: updateProfileSchema }), updateMe);             // FR3
+usersRoutes.patch('/me/creator-mode', validate({ body: creatorModeSchema }), toggleCreatorMode); // FR5

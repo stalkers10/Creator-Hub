@@ -20,3 +20,5 @@ coverage/
 # Expo
 .expo/
 expo-env.d.ts
+apps/mobile/.env
+apps/api/.env

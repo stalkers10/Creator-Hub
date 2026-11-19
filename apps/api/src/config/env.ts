@@ -22,6 +22,15 @@ const schema = z.object({
   QUOTA_RESET_UTC_OFFSET_MINUTES: z.coerce.number().int().default(60),
   USAGE_HEARTBEAT_MAX_GAP_SECONDS: z.coerce.number().int().positive().default(30),
 
+  // Email — FR4 password reset. All optional; if absent, links are logged to the console (dev only).
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default('noreply@content-platform.local'),
+  /** Base URL of the mobile/web app. Used to build the reset link sent by email. */
+  APP_RESET_URL: z.string().url().default('http://localhost:8081/reset-password'),
+
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),

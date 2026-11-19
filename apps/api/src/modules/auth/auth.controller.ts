@@ -16,3 +16,18 @@ export const login: RequestHandler = async (req, res) => {
 export const logout: RequestHandler = (_req, res) => {
   res.status(204).end();
 };
+
+/**
+ * FR4: request a password-reset email.
+ * Always responds 200 so callers cannot enumerate registered addresses.
+ */
+export const forgotPassword: RequestHandler = async (req, res) => {
+  await authService.requestPasswordReset(req.body);
+  res.json({ message: 'If that email is registered you will receive a reset link shortly' });
+};
+
+/** FR4: exchange a valid reset token for a new password. */
+export const resetPassword: RequestHandler = async (req, res) => {
+  await authService.resetPassword(req.body);
+  res.json({ message: 'Password updated. You can now log in with your new password.' });
+};
