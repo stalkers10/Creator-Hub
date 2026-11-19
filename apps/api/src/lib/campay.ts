@@ -1,19 +1,44 @@
 /**
  * Campay API client (FR30, FR31).
  *
- * Campay uses OAuth2 client-credentials to issue a short-lived token,
- * then that token authorises collection and status calls.
+ * Authentication strategy (in order of preference):
+ *  1. CAMPAY_PERMANENT_ACCESS_TOKEN — used directly as the Bearer token.
+ *     No token exchange needed. This is the recommended approach.
+ *  2. CAMPAY_APP_USERNAME + CAMPAY_APP_PASSWORD — exchanged for a short-lived
+ *     token via POST /token/. The token is cached until it expires.
+ *
+ * Base URL:
+ *  - CAMPAY_BASE_URL if explicitly set, otherwise:
+ *  - https://demo.campay.net  when CAMPAY_MODE=sandbox  (default)
+ *  - https://www.campay.net   when CAMPAY_MODE=production
  *
  * SWE applied:
  *  - Single Responsibility: only wraps Campay HTTP; no business logic here.
  *  - Fail Fast: missing credentials are detected before any HTTP call.
- *  - Separation of Concerns: token caching is isolated so callers never
- *    worry about re-authentication.
+ *  - Separation of Concerns: auth strategy is fully isolated in getToken().
+ *  - Open/Closed: switching from token-exchange to permanent token requires
+ *    only an env-var change, no code change.
  */
+
+import jwt from 'jsonwebtoken';
 
 import { env } from '../config/env';
 import { badRequest } from './errors';
 import { logger } from './logger';
+
+// ---------------------------------------------------------------------------
+// Base URL resolution
+// ---------------------------------------------------------------------------
+
+function getBaseUrl(): string {
+  if (env.CAMPAY_BASE_URL) {
+    const baseUrl = env.CAMPAY_BASE_URL.replace(/\/+$/, '');
+    return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
+  }
+  return env.CAMPAY_MODE === 'production'
+    ? 'https://www.campay.net/api'
+    : 'https://demo.campay.net/api';
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,37 +55,50 @@ export interface CampayCollectParams {
 
 export interface CampayCollectResult {
   reference: string; // Campay's transaction reference (providerReference)
-  status: 'SUCCESSFUL' | 'FAILED' | 'PENDING';
+  status?: 'SUCCESSFUL' | 'FAILED' | 'PENDING';
   ussd_code?: string;
+  operator?: string;
 }
 
 export interface CampayTransactionStatus {
   reference: string;
   status: 'SUCCESSFUL' | 'FAILED' | 'PENDING';
-  amount: string;
+  amount: string | number;
   currency: string;
   operator: string;
 }
 
 // ---------------------------------------------------------------------------
-// Token cache
+// Token resolution
 // ---------------------------------------------------------------------------
 
+/** Short-lived token cache (only used when permanent token is not set). */
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
-function requireConfig() {
-  if (!env.CAMPAY_BASE_URL || !env.CAMPAY_APP_USERNAME || !env.CAMPAY_APP_PASSWORD) {
-    throw badRequest('Payment provider is not configured on this server');
+/**
+ * Returns the Authorization header value to use on Campay API calls.
+ *
+ * Prefers the permanent access token because it requires no network call.
+ * Falls back to username/password token exchange.
+ */
+async function getAuthToken(): Promise<string> {
+  // Strategy 1: permanent access token (no network call needed).
+  if (env.CAMPAY_PERMANENT_ACCESS_TOKEN) {
+    return env.CAMPAY_PERMANENT_ACCESS_TOKEN;
   }
-}
 
-async function getToken(): Promise<string> {
+  // Strategy 2: short-lived token from username + password.
+  if (!env.CAMPAY_APP_USERNAME || !env.CAMPAY_APP_PASSWORD) {
+    throw badRequest(
+      'Payment provider is not configured: set CAMPAY_PERMANENT_ACCESS_TOKEN ' +
+        'or both CAMPAY_APP_USERNAME and CAMPAY_APP_PASSWORD',
+    );
+  }
+
   if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken;
 
-  requireConfig();
-
-  const res = await fetch(`${env.CAMPAY_BASE_URL}/token/`, {
+  const res = await fetch(`${getBaseUrl()}/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -75,10 +113,12 @@ async function getToken(): Promise<string> {
     throw new Error(`Campay auth failed: ${res.status}`);
   }
 
-  const data = (await res.json()) as { token: string; expiry?: number };
+  const data = (await res.json()) as { token?: string; expiry?: number; expires_in?: number };
+  if (!data.token) throw new Error('Campay auth response did not include a token');
   cachedToken = data.token;
-  // Default expiry: 50 minutes (tokens typically valid for 60 min)
-  tokenExpiresAt = Date.now() + (data.expiry ?? 50 * 60) * 1000;
+  // The documented response uses expires_in seconds. Use a conservative fallback.
+  const lifetimeSeconds = data.expires_in ?? data.expiry ?? 3600;
+  tokenExpiresAt = Date.now() + Math.max(0, lifetimeSeconds - 60) * 1000;
   return cachedToken;
 }
 
@@ -93,19 +133,18 @@ async function getToken(): Promise<string> {
 export async function initiateCollection(
   params: CampayCollectParams,
 ): Promise<CampayCollectResult> {
-  requireConfig();
-  const token = await getToken();
+  const token = await getAuthToken();
 
-  const res = await fetch(`${env.CAMPAY_BASE_URL}/collect/`, {
+  const res = await fetch(`${getBaseUrl()}/collect/`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Token ${token}`,
     },
     body: JSON.stringify({
-      amount: String(params.amount),
+      amount: params.amount,
       currency: params.currency,
-      from: params.phoneNumber,
+      from: params.phoneNumber.replace(/^\+/, ''),
       description: params.description,
       external_reference: params.externalRef,
     }),
@@ -117,7 +156,9 @@ export async function initiateCollection(
     throw new Error(`Campay collect failed: ${res.status}`);
   }
 
-  return res.json() as Promise<CampayCollectResult>;
+  const data = (await res.json()) as CampayCollectResult;
+  if (!data.reference) throw new Error('Campay collect response did not include a reference');
+  return data;
 }
 
 /**
@@ -125,10 +166,9 @@ export async function initiateCollection(
  * Never trust the webhook body alone — always call this before processing.
  */
 export async function getTransactionStatus(reference: string): Promise<CampayTransactionStatus> {
-  requireConfig();
-  const token = await getToken();
+  const token = await getAuthToken();
 
-  const res = await fetch(`${env.CAMPAY_BASE_URL}/transaction/${reference}/`, {
+  const res = await fetch(`${getBaseUrl()}/transaction/${encodeURIComponent(reference)}/`, {
     headers: { Authorization: `Token ${token}` },
   });
 
@@ -138,10 +178,23 @@ export async function getTransactionStatus(reference: string): Promise<CampayTra
     throw new Error(`Campay status check failed: ${res.status}`);
   }
 
-  return res.json() as Promise<CampayTransactionStatus>;
+  const data = (await res.json()) as CampayTransactionStatus;
+  if (!data.reference || !data.status) throw new Error('Campay status response was incomplete');
+  return data;
 }
 
-/** Expose for testing — resets the token cache. */
+/** CamPay posts a JWT in the callback body's `signature` field. */
+export function verifyWebhookSignature(signature: string | undefined): boolean {
+  if (!env.CAMPAY_WEBHOOK_KEY || !signature) return false;
+  try {
+    jwt.verify(signature, env.CAMPAY_WEBHOOK_KEY, { algorithms: ['HS256'] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Expose for testing — resets the short-lived token cache. */
 export function _resetTokenCache(): void {
   cachedToken = null;
   tokenExpiresAt = 0;

@@ -21,6 +21,12 @@ paymentsRoutes.post(
 // No requireAuth: call comes from Campay, not from an authenticated user (FR31).
 paymentsRoutes.post(
   '/webhook/campay',
+  (req, _res, next) => {
+    // CamPay callback integrations may send the callback fields in the query
+    // string; normalize both documented SDK forms before validating.
+    req.body = { ...req.query, ...req.body };
+    next();
+  },
   validate({ body: campayWebhookSchema }),
   campayWebhookHandler,
 ); // FR31 / FR34

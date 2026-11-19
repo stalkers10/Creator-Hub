@@ -117,9 +117,10 @@ export async function handleCampayWebhook(body: CampayWebhookBody): Promise<void
     .limit(1);
 
   if (!payment) {
-    // Could be a test ping or a reference we don't own — log and ignore.
+    // The provider callback can race the DB reference update after collection.
+    // Return a non-2xx response so CamPay retries after the row is committed.
     logger.warn({ reference }, 'Campay webhook: unknown reference');
-    return;
+    throw new Error(`Unknown CamPay transaction reference: ${reference}`);
   }
 
   // FR34: idempotency — already processed successfully.
@@ -131,6 +132,10 @@ export async function handleCampayWebhook(body: CampayWebhookBody): Promise<void
   // FR31: verify status with Campay — never trust the body.
   const verified = await getTransactionStatus(reference);
 
+  if (verified.reference !== reference) {
+    throw new Error('CamPay status response reference did not match the callback');
+  }
+
   if (verified.status === 'PENDING') {
     // Not finalised yet; Campay will retry.
     logger.info({ reference }, 'Campay webhook: still pending');
@@ -141,6 +146,13 @@ export async function handleCampayWebhook(body: CampayWebhookBody): Promise<void
     await db.update(payments).set({ status: 'failed' }).where(eq(payments.id, payment.id));
     logger.info({ reference }, 'Campay webhook: payment failed');
     return;
+  }
+
+  if (
+    Number(verified.amount) !== payment.amount ||
+    verified.currency.toUpperCase() !== payment.currency.toUpperCase()
+  ) {
+    throw new Error(`CamPay transaction ${reference} amount/currency mismatch`);
   }
 
   // Status is SUCCESSFUL — activate the subscription in one transaction.

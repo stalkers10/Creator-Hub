@@ -7,7 +7,7 @@
  *  P3  POST /payments returns 404 when subscription not found.
  *  P4  POST /payments returns 403 when subscription belongs to another user.
  *  P5  POST /payments initiates successfully and returns 201.
- *  P6  POST /payments/webhook/campay returns 200 always (even on unknown reference).
+ *  P6  POST /payments/webhook/campay asks CamPay to retry an unknown reference.
  *  P7  POST /payments/webhook/campay is idempotent for already-processed payments (FR34).
  *  P8  GET /payments/me requires auth (401).
  *  P9  GET /payments/me returns payment history.
@@ -27,6 +27,7 @@ vi.mock('../../db', () => ({
 vi.mock('../../lib/campay', () => ({
   initiateCollection: vi.fn(),
   getTransactionStatus: vi.fn(),
+  verifyWebhookSignature: vi.fn((signature: string) => signature === 'valid-signature'),
   _resetTokenCache: vi.fn(),
 }));
 
@@ -161,7 +162,7 @@ describe('POST /payments (FR30)', () => {
 describe('POST /payments/webhook/campay (FR31/FR34)', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('P6 — returns 200 for unknown reference', async () => {
+  it('P6 — returns 500 for unknown reference so CamPay can retry', async () => {
     const { db } = await import('../../db');
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
       from: () => ({ where: () => ({ limit: () => Promise.resolve([]) }) }),
@@ -169,9 +170,9 @@ describe('POST /payments/webhook/campay (FR31/FR34)', () => {
 
     const res = await request(app)
       .post('/payments/webhook/campay')
-      .send({ reference: 'unknown-ref' });
+      .send({ reference: 'unknown-ref', signature: 'valid-signature' });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
   });
 
   it('P7 — returns 200 immediately for already-processed payment (FR34 idempotency)', async () => {
@@ -184,7 +185,7 @@ describe('POST /payments/webhook/campay (FR31/FR34)', () => {
 
     const res = await request(app)
       .post('/payments/webhook/campay')
-      .send({ reference: 'campay-ref-1', status: 'SUCCESSFUL' });
+      .send({ reference: 'campay-ref-1', status: 'SUCCESSFUL', signature: 'valid-signature' });
 
     expect(res.status).toBe(200);
     // Campay status check should NOT be called for already-processed payments.
@@ -192,23 +193,16 @@ describe('POST /payments/webhook/campay (FR31/FR34)', () => {
     expect(campay.getTransactionStatus).not.toHaveBeenCalled();
   });
 
-  it('P10 — rejects request with wrong webhook key (401)', async () => {
-    const { env } = await import('../../config/env');
-    Object.assign(env, { CAMPAY_WEBHOOK_KEY: 'secret-key' });
-
+  it('P10 — rejects request with invalid signature (401)', async () => {
     const res = await request(app)
       .post('/payments/webhook/campay')
-      .set('x-campay-key', 'wrong-key')
-      .send({ reference: 'any-ref' });
+      .send({ reference: 'any-ref', signature: 'invalid-signature' });
 
     expect(res.status).toBe(401);
-    Object.assign(env, { CAMPAY_WEBHOOK_KEY: undefined });
   });
 
-  it('P11 — accepts request with correct webhook key', async () => {
-    const { env } = await import('../../config/env');
+  it('P11 — verifies signature and requests a retry for unknown reference', async () => {
     const { db } = await import('../../db');
-    Object.assign(env, { CAMPAY_WEBHOOK_KEY: 'secret-key' });
 
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
       from: () => ({ where: () => ({ limit: () => Promise.resolve([]) }) }),
@@ -216,11 +210,11 @@ describe('POST /payments/webhook/campay (FR31/FR34)', () => {
 
     const res = await request(app)
       .post('/payments/webhook/campay')
-      .set('x-campay-key', 'secret-key')
-      .send({ reference: 'unknown-ref' });
+      .send({ reference: 'unknown-ref', signature: 'valid-signature' });
 
-    expect(res.status).toBe(200);
-    Object.assign(env, { CAMPAY_WEBHOOK_KEY: undefined });
+    expect(res.status).toBe(500);
+    const campay = await import('../../lib/campay');
+    expect(campay.verifyWebhookSignature).toHaveBeenCalledWith('valid-signature');
   });
 });
 

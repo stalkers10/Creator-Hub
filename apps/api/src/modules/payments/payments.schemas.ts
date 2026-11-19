@@ -16,6 +16,10 @@ export const initiatePaymentSchema = z.object({
 export const campayWebhookSchema = z.object({
   reference: z.string().min(1),
   status: z.string().optional(), // present but we re-verify — do not trust
+  amount: z.union([z.string(), z.number()]).optional(),
+  currency: z.string().optional(),
+  signature: z.string().min(1),
+  external_reference: z.string().optional(),
 });
 
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;

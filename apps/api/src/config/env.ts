@@ -28,17 +28,34 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('noreply@content-platform.local'),
-  /** Base URL of the mobile/web app. Used to build the reset link sent by email. */
   APP_RESET_URL: z.string().url().default('http://localhost:8081/reset-password'),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  CAMPAY_BASE_URL: z.string().optional(),
+  // Campay (mobile money payments) — FR30–FR34.
+  // mode: 'sandbox' uses https://demo.campay.net, 'production' uses https://www.campay.net
+  CAMPAY_MODE: z.enum(['sandbox', 'production']).default('sandbox'),
+  // Explicit base URL overrides the mode default (useful for testing).
+  CAMPAY_BASE_URL: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  CAMPAY_APP_ID: z.string().optional(),
   CAMPAY_APP_USERNAME: z.string().optional(),
   CAMPAY_APP_PASSWORD: z.string().optional(),
+  // Preferred auth method: when set, used directly — no token exchange needed.
+  CAMPAY_PERMANENT_ACCESS_TOKEN: z.string().optional(),
+  // Shared secret used to verify the JWT in CamPay's callback `signature` field.
   CAMPAY_WEBHOOK_KEY: z.string().optional(),
+  // The URL Campay will call on payment events (registered in the Campay dashboard).
+  CAMPAY_WEBHOOK_URL: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
 });
 
 const parsed = schema.safeParse(process.env);
