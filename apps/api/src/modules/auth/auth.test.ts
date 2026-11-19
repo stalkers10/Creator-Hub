@@ -61,15 +61,17 @@ describe('POST /auth/forgot-password (FR4)', () => {
     const { db } = await import('../../db');
     // Simulate a user found
     (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-      from: () => ({ where: () => ({ limit: () => Promise.resolve([{ id: 'user-1', email: 'a@b.com', name: 'Alice' }]) }) }),
+      from: () => ({
+        where: () => ({
+          limit: () => Promise.resolve([{ id: 'user-1', email: 'a@b.com', name: 'Alice' }]),
+        }),
+      }),
     });
     (db.insert as ReturnType<typeof vi.fn>).mockReturnValue({
       values: () => Promise.resolve(),
     });
 
-    const res = await request(app)
-      .post('/auth/forgot-password')
-      .send({ email: 'a@b.com' });
+    const res = await request(app).post('/auth/forgot-password').send({ email: 'a@b.com' });
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/reset link/i);
@@ -90,9 +92,7 @@ describe('POST /auth/forgot-password (FR4)', () => {
   });
 
   it('rejects a missing email with 400', async () => {
-    const res = await request(app)
-      .post('/auth/forgot-password')
-      .send({});
+    const res = await request(app).post('/auth/forgot-password').send({});
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -141,11 +141,13 @@ describe('POST /auth/reset-password (FR4)', () => {
       }),
     });
 
-    (db.transaction as ReturnType<typeof vi.fn>).mockImplementation(async (fn: (tx: unknown) => Promise<void>) => {
-      await fn({
-        update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
-      });
-    });
+    (db.transaction as ReturnType<typeof vi.fn>).mockImplementation(
+      async (fn: (tx: unknown) => Promise<void>) => {
+        await fn({
+          update: () => ({ set: () => ({ where: () => Promise.resolve() }) }),
+        });
+      },
+    );
 
     const res = await request(app)
       .post('/auth/reset-password')

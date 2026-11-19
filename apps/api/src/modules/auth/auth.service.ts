@@ -11,7 +11,12 @@ import { signToken } from '../../lib/jwt';
 import { sendMail } from '../../lib/mailer';
 import { env } from '../../config/env';
 import { toPublicUser } from '../users/users.service';
-import type { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './auth.schemas';
+import type {
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+} from './auth.schemas';
 
 const BCRYPT_ROUNDS = 12;
 /** Reset tokens expire after one hour. */
@@ -155,9 +160,6 @@ export async function resetPassword(input: ResetPasswordInput): Promise<void> {
       .set({ usedAt: now })
       .where(eq(passwordResetTokens.id, record.id));
 
-    await tx
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, record.userId));
+    await tx.update(users).set({ passwordHash }).where(eq(users.id, record.userId));
   });
 }

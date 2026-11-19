@@ -95,7 +95,9 @@ describe('PUT /users/me (FR3)', () => {
 
     // updateProfile: db.update mock
     (db.update as ReturnType<typeof vi.fn>).mockReturnValue({
-      set: () => ({ where: () => ({ returning: () => Promise.resolve([{ ...baseUser, name: 'Bob' }]) }) }),
+      set: () => ({
+        where: () => ({ returning: () => Promise.resolve([{ ...baseUser, name: 'Bob' }]) }),
+      }),
     });
 
     // getPublicUserById: db.select mock (called after the update)
@@ -103,8 +105,7 @@ describe('PUT /users/me (FR3)', () => {
       from: () => ({
         leftJoin: () => ({
           where: () => ({
-            limit: () =>
-              Promise.resolve([{ user: { ...baseUser, name: 'Bob' }, creatorId: null }]),
+            limit: () => Promise.resolve([{ user: { ...baseUser, name: 'Bob' }, creatorId: null }]),
           }),
         }),
       }),
@@ -179,8 +180,7 @@ describe('PATCH /users/me/creator-mode (FR5)', () => {
         from: () => ({
           leftJoin: () => ({
             where: () => ({
-              limit: () =>
-                Promise.resolve([{ user: baseUser, creatorId: 'creator-1' }]),
+              limit: () => Promise.resolve([{ user: baseUser, creatorId: 'creator-1' }]),
             }),
           }),
         }),
@@ -230,8 +230,7 @@ describe('PATCH /users/me/creator-mode (FR5)', () => {
       from: () => ({
         leftJoin: () => ({
           where: () => ({
-            limit: () =>
-              Promise.resolve([{ user: baseUser, creatorId: null }]),
+            limit: () => Promise.resolve([{ user: baseUser, creatorId: null }]),
           }),
         }),
       }),

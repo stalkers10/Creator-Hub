@@ -55,18 +55,17 @@ export async function getPublicUserById(id: string): Promise<PublicUser> {
  *  - DRY: reuses toPublicUser and getPublicUserById instead of
  *    duplicating the select logic.
  */
-export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<PublicUser> {
+export async function updateProfile(
+  userId: string,
+  input: UpdateProfileInput,
+): Promise<PublicUser> {
   // Build the patch object from only the fields the caller provided (partial update).
   const patch: Partial<Pick<User, 'name' | 'email'>> = {};
   if (input.name !== undefined) patch.name = input.name;
   if (input.email !== undefined) patch.email = input.email;
 
   try {
-    const updated = await db
-      .update(users)
-      .set(patch)
-      .where(eq(users.id, userId))
-      .returning();
+    const updated = await db.update(users).set(patch).where(eq(users.id, userId)).returning();
 
     if (!updated[0]) throw notFound('User not found');
   } catch (error) {

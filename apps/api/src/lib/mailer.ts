@@ -13,9 +13,7 @@ function createTransport() {
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       auth:
-        env.SMTP_USER && env.SMTP_PASS
-          ? { user: env.SMTP_USER, pass: env.SMTP_PASS }
-          : undefined,
+        env.SMTP_USER && env.SMTP_PASS ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
     });
   }
   // No SMTP configured: use Nodemailer's jsonTransport so we can log the output.
@@ -42,7 +40,10 @@ export async function sendMail(options: MailOptions): Promise<void> {
 
   if (!env.SMTP_HOST) {
     if (env.NODE_ENV !== 'test') {
-      logger.info({ to: options.to, subject: options.subject }, '[mailer] No SMTP configured — email not sent');
+      logger.info(
+        { to: options.to, subject: options.subject },
+        '[mailer] No SMTP configured — email not sent',
+      );
       logger.info(`[mailer] Email body:\n${options.text}`);
     }
     return;
