@@ -1,10 +1,37 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
-import { requireAuth } from '../../middleware/auth';
+import { optionalAuth, requireAuth } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
+import {
+  getCreatorHandler,
+  listCreatorsHandler,
+  updateCreatorHandler,
+} from './creators.controller';
+import {
+  creatorIdParamsSchema,
+  listCreatorsQuerySchema,
+  updateCreatorProfileSchema,
+} from './creators.schemas';
 
 export const creatorsRoutes: Router = Router();
 
-creatorsRoutes.get('/', todo('FR10 list and search creators'));
-creatorsRoutes.put('/me', requireAuth, todo('FR7 create or update own creator profile'));
-creatorsRoutes.get('/:id', todo('FR10 creator profile'));
+creatorsRoutes.get(
+  '/',
+  optionalAuth,
+  validate({ query: listCreatorsQuerySchema }),
+  listCreatorsHandler,
+); // FR10
+
+creatorsRoutes.put(
+  '/me',
+  requireAuth,
+  validate({ body: updateCreatorProfileSchema }),
+  updateCreatorHandler,
+); // FR7
+
+creatorsRoutes.get(
+  '/:id',
+  optionalAuth,
+  validate({ params: creatorIdParamsSchema }),
+  getCreatorHandler,
+); // FR10 + FR12

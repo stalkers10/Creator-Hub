@@ -1,11 +1,36 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { optionalAuth, requireAuth } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
+import { editPost, getPost, publishPost, removePost } from './posts.controller';
+import { createPostSchema, postIdParamsSchema, updatePostSchema } from './posts.schemas';
 
 export const postsRoutes: Router = Router();
 
-postsRoutes.post('/', requireAuth, todo('FR8 publish a video, image or text post'));
-postsRoutes.get('/:id', optionalAuth, todo('get one post'));
-postsRoutes.patch('/:id', requireAuth, todo('FR9 edit own post'));
-postsRoutes.delete('/:id', requireAuth, todo('FR9 delete own post'));
+postsRoutes.post(
+  '/',
+  requireAuth,
+  validate({ body: createPostSchema }),
+  publishPost,
+); // FR8
+
+postsRoutes.get(
+  '/:id',
+  optionalAuth,
+  validate({ params: postIdParamsSchema }),
+  getPost,
+);
+
+postsRoutes.patch(
+  '/:id',
+  requireAuth,
+  validate({ params: postIdParamsSchema, body: updatePostSchema }),
+  editPost,
+); // FR9
+
+postsRoutes.delete(
+  '/:id',
+  requireAuth,
+  validate({ params: postIdParamsSchema }),
+  removePost,
+); // FR9

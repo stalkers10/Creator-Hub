@@ -1,8 +1,8 @@
 import { Router } from 'express';
 
-import { todo } from '../../lib/not-implemented';
 import { requireAuth } from '../../middleware/auth';
+import { getSignature } from './media.controller';
 
 export const mediaRoutes: Router = Router();
 
-mediaRoutes.post('/signature', requireAuth, todo('signed Cloudinary upload parameters'));
+mediaRoutes.post('/signature', requireAuth, getSignature); // FR8

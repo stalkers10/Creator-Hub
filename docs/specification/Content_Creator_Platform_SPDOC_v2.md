@@ -139,7 +139,7 @@ In Cameroon, many people create and share content, but advertising revenue is sm
 
 ### 3.2 Functional Requirements
 
-#### A. User Account Management
+#### A. User Account Management 
 
 | ID | Requirement |
 | --- | --- |

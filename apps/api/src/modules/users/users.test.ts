@@ -59,16 +59,6 @@ const baseUser = {
   isAdmin: false,
 };
 
-function mockSelectReturns(rows: unknown[]) {
-  const { db } = require('../../db');
-  (db.select as ReturnType<typeof vi.fn>).mockReturnValue({
-    from: () => ({
-      leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
-      where: () => ({ limit: () => Promise.resolve(rows) }),
-    }),
-  });
-}
-
 // ---------------------------------------------------------------------------
 // FR3 — PUT /users/me
 // ---------------------------------------------------------------------------
